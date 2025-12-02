@@ -312,11 +312,15 @@
             startBtn.innerHTML = `<i data-lucide="pause" class="w-6 h-6 fill-current"></i> <span id="start-text">PAUSE</span>`;
             lucide.createIcons();
             
+            // Set the correct, un-paused label when resuming
             if (state.isWork) {
+                 statusLabel.innerText = "WORK";
                  setTheme('work');
             } else if (state.isSetRest) {
+                 statusLabel.innerText = "SET REST";
                  setTheme('set-rest');
             } else {
+                 statusLabel.innerText = "REST";
                  setTheme('rest');
             }
 
@@ -334,14 +338,31 @@
             }, 1000);
         }
 
+        // --- FIXED FUNCTION ---
         function stopTimer() {
             state.isRunning = false;
             clearInterval(timerInterval);
+            
             if (statusLabel.innerText !== 'DONE') {
+                // Determine the current phase to apply the 'Paused' prefix
+                let currentPhase = 'PAUSED';
+                if (state.isWork) {
+                    currentPhase = 'PAUSED WORK';
+                } else if (state.isSetRest) {
+                    currentPhase = 'PAUSED SET REST';
+                } else {
+                    currentPhase = 'PAUSED REST';
+                }
+                
+                // Update the status label
+                statusLabel.innerText = currentPhase;
+                
+                // Update the button text to RESUME
                 startBtn.innerHTML = `<i data-lucide="play" class="w-6 h-6 fill-current"></i> <span id="start-text">RESUME</span>`;
                 lucide.createIcons();
             }
         }
+        // ----------------------
 
         function resetTimer() {
             stopTimer();
@@ -393,8 +414,8 @@
                 state.currentSet++;
                 state.currentCycle = 1;
                 state.isWork = true;
-                state.timeLeft = settings.workTime;
                 statusLabel.innerText = "WORK";
+                state.timeLeft = settings.workTime;
                 setTheme('work');
             } else { 
                 // Cycle Rest -> Next Cycle Work or Next Set Work (if no set rest)
