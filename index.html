@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Coach Chris Interval Timer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <style>
+        /* Base Imports for Aesthetics (Fonts and Body Styles) */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&family=Oswald:wght@400;500;700&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #000000;
+            color: #ffffff;
+            /* Ensure the timer view fills the screen */
+            min-height: 100vh;
+            display: flex;
+            align-items: center; /* Center content vertically */
+            justify-content: center; /* Center content horizontally */
+        }
+
+        .font-brand {
+            font-family: 'Oswald', sans-serif;
+        }
+
+        .tracking-ultra-wide {
+            letter-spacing: 0.15em;
+        }
+
+        /* Specific Styles for Timer (Monochromatic Inversion for focus) */
+        #timer-container {
+             /* Base text color for neutral state */
+            color: #ffffff;
+            transition: all 0.5s ease-in-out;
+            background-color: #000000; /* Ensure container is dark */
+            width: 100%;
+            max-width: 480px; /* Max width constraint from original design */
+            height: 100vh; /* Make it full height on load */
+            padding: 2rem;
+        }
+
+        .state-work {
+            background-color: #ffffff !important;
+            color: #000000 !important;
+        }
+
+        .state-rest {
+            background-color: #111111 !important;
+            color: #ffffff !important;
+        }
+        
+        .state-set-rest {
+            background-color: #333333 !important;
+            color: #fefefe !important;
+        }
+        
+        /* Input styling for the dark theme */
+        input, select {
+            background-color: #111111;
+            border: 1px solid #333333;
+            color: #ffffff;
+            padding: 0.75rem;
+            border-radius: 0.5rem;
+            transition: border-color 0.2s;
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: #ffffff;
+            box-shadow: 0 0 0 1px #ffffff;
+        }
+
+        /* Big timer text size for responsiveness */
+        #time-display {
+            font-size: 10rem; /* Default large size */
+            line-height: 1;
+        }
+        
+        @media (max-width: 640px) {
+            #time-display {
+                font-size: 7rem; /* Smaller on mobile */
+            }
+            #timer-container {
+                padding: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="timer-container" class="flex flex-col justify-start text-center transition-colors duration-300">
+        
+        <div id="timer-settings-panel" class="w-full pt-4 space-y-4 flex-grow flex flex-col justify-center">
+            <h2 class="font-brand text-4xl uppercase tracking-widest font-bold mb-8 text-center">Interval Timer</h2>
+            <div class="grid grid-cols-2 gap-4">
+                <label class="block">
+                    <span class="text-sm font-bold block mb-1">Work Time (s)</span>
+                    <input id="timer-work-time" type="number" value="45" min="5" max="300" class="w-full text-center">
+                </label>
+                <label class="block">
+                    <span class="text-sm font-bold block mb-1">Rest Time (s)</span>
+                    <input id="timer-rest-time" type="number" value="15" min="0" max="300" class="w-full text-center">
+                </label>
+                <label class="block">
+                    <span class="text-sm font-bold block mb-1">Cycles per Set</span>
+                    <input id="timer-cycles-per-set" type="number" value="8" min="1" max="50" class="w-full text-center">
+                </label>
+                <label class="block">
+                    <span class="text-sm font-bold block mb-1">Total Sets</span>
+                    <input id="timer-total-sets" type="number" value="3" min="1" max="20" class="w-full text-center">
+                </label>
+            </div>
+            
+            <label class="block pt-4">
+                <span class="text-sm font-bold block mb-1">Rest Between Sets (s) - Optional</span>
+                <input id="timer-set-rest-time" type="number" value="60" min="0" max="600" class="w-full text-center">
+            </label>
+
+            <button onclick="loadTimerSettings()" class="w-full py-4 mt-6 bg-white text-black text-xl font-bold uppercase rounded-sm hover:opacity-80 transition-opacity">
+                Set Timer
+            </button>
+        </div>
+
+        <div id="timer-display-panel" class="hidden h-full flex flex-col justify-between py-12">
+            <div class="pt-4">
+                <h2 id="timer-label" class="font-brand text-4xl uppercase tracking-widest font-bold mb-2">READY</h2>
+                <div class="flex justify-center items-center space-x-4 font-mono text-sm opacity-80">
+                    <span class="flex items-center space-x-2">CYCLE <span id="cycle-display" class="text-xl font-bold">1</span> / <span id="cycle-total-display">8</span></span>
+                    <span class="text-2xl font-bold text-gray-500">|</span>
+                    <span class="flex items-center space-x-2">SET <span id="set-display" class="text-xl font-bold">1</span> / <span id="set-total-display">3</span></span>
+                </div>
+            </div>
+
+            <div class="flex-grow flex items-center justify-center">
+                <div id="time-display" class="font-brand text-[10rem] leading-none font-bold tabular-nums">
+                    45
+                </div>
+            </div>
+
+            <div class="pb-4 space-y-4 w-full">
+                <button id="start-btn" onclick="toggleTimer()" class="w-full py-5 text-xl font-bold uppercase tracking-wider border-2 border-current rounded-none hover:opacity-80 transition-opacity flex items-center justify-center gap-3">
+                    <i data-lucide="play" class="w-6 h-6 fill-current"></i>
+                    <span id="start-text">START</span>
+                </button>
+
+                <button onclick="showSettings()" class="w-full py-3 text-sm font-bold uppercase tracking-wider opacity-60 hover:opacity-100 transition-opacity">
+                    CHANGE SETTINGS
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize Lucide Icons
+        lucide.createIcons();
+        
+        // --- Interval Timer Logic ---
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        let audioCtx;
+        let timerInterval = null;
+
+        // Configuration and State
+        let settings = {
+            workTime: 45,
+            restTime: 15,
+            setRestTime: 60,
+            cyclesPerSet: 8,
+            totalSets: 3
+        };
+
+        let state = {
+            timeLeft: settings.workTime,
+            currentSet: 1,
+            currentCycle: 1,
+            isWork: true,      
+            isSetRest: false,  
+            isRunning: false,
+            isReady: false
+        };
+
+        const container = document.getElementById('timer-container');
+        const timeDisplay = document.getElementById('time-display');
+        const cycleDisplay = document.getElementById('cycle-display');
+        const setDisplay = document.getElementById('set-display');
+        const statusLabel = document.getElementById('timer-label');
+        const startBtn = document.getElementById('start-btn');
+        const cycleTotalDisplay = document.getElementById('cycle-total-display');
+        const setTotalDisplay = document.getElementById('set-total-display');
+        const settingsPanel = document.getElementById('timer-settings-panel');
+        const displayPanel = document.getElementById('timer-display-panel');
+        const startText = document.getElementById('start-text');
+
+        function showSettings() {
+            resetTimer();
+            settingsPanel.classList.remove('hidden');
+            displayPanel.classList.add('hidden');
+            state.isReady = false;
+        }
+
+        function loadTimerSettings() {
+            // Read and validate inputs
+            const work = parseInt(document.getElementById('timer-work-time').value, 10);
+            const rest = parseInt(document.getElementById('timer-rest-time').value, 10);
+            const setRest = parseInt(document.getElementById('timer-set-rest-time').value, 10);
+            const cycles = parseInt(document.getElementById('timer-cycles-per-set').value, 10);
+            const sets = parseInt(document.getElementById('timer-total-sets').value, 10);
+
+            if (work < 5 || rest < 0 || cycles < 1 || sets < 1 || setRest < 0 || isNaN(work) || isNaN(rest) || isNaN(cycles) || isNaN(sets) || isNaN(setRest)) {
+                console.error("Invalid timer settings. Please check all fields.");
+                return; 
+            }
+            
+            // Apply settings
+            settings.workTime = work;
+            settings.restTime = rest;
+            settings.setRestTime = setRest;
+            settings.cyclesPerSet = cycles;
+            settings.totalSets = sets;
+
+            // Initialize state for start
+            state.timeLeft = settings.workTime;
+            state.currentSet = 1;
+            state.currentCycle = 1;
+            state.isWork = true;
+            state.isSetRest = false;
+            state.isReady = true;
+
+            // Update display totals and initial state
+            cycleTotalDisplay.textContent = settings.cyclesPerSet;
+            setTotalDisplay.textContent = settings.totalSets;
+            
+            updateDisplay();
+            setTheme('rest'); // Start in a neutral/ready state
+
+            // Switch to display view
+            settingsPanel.classList.add('hidden');
+            displayPanel.classList.remove('hidden');
+        }
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new AudioContext();
+            }
+            // Attempt to resume audio context if suspended (common issue on mobile)
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        function beep(freq = 600, duration = 100, type = 'sine') {
+            if (!audioCtx) return;
+            try {
+                const osc = audioCtx.createOscillator();
+                const gainNode = audioCtx.createGain();
+
+                osc.type = type;
+                osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+                osc.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
+
+                osc.start(audioCtx.currentTime);
+                
+                // Set initial volume and ramp down
+                gainNode.gain.setValueAtTime(0.15, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration / 1000);
+
+                osc.stop(audioCtx.currentTime + duration / 1000);
+            } catch (e) {
+                console.warn("Audio Context error:", e);
+            }
+        }
+
+        function toggleTimer() {
+            if (!state.isReady) {
+                // Timer hasn't been set up yet, force setup
+                loadTimerSettings();
+                if (!state.isReady) return; 
+            }
+            
+            if (state.isRunning) {
+                stopTimer();
+            } else {
+                startTimer();
+            }
+        }
+
+        function startTimer() {
+            if (statusLabel.innerText === 'DONE') {
+                // If it was finished, hitting start restarts it
+                loadTimerSettings();
+            }
+            
+            state.isRunning = true;
+            initAudio();
+            startBtn.innerHTML = `<i data-lucide="pause" class="w-6 h-6 fill-current"></i> <span id="start-text">PAUSE</span>`;
+            lucide.createIcons();
+            
+            // Ensure theme is correct on start/resume
+            if (state.isWork) {
+                 setTheme('work');
+            } else if (state.isSetRest) {
+                 setTheme('set-rest');
+            } else {
+                 setTheme('rest');
+            }
+
+            timerInterval = setInterval(() => {
+                state.timeLeft--;
+                updateDisplay();
+
+                if (state.timeLeft >= 1 && state.timeLeft <= 3) {
+                    beep(600, 100, 'square'); 
+                }
+
+                if (state.timeLeft < 0) {
+                    switchPhase();
+                }
+            }, 1000);
+        }
+
+        function stopTimer() {
+            state.isRunning = false;
+            clearInterval(timerInterval);
+            // Check if timer is done before setting resume text
+            if (statusLabel.innerText !== 'DONE') {
+                startBtn.innerHTML = `<i data-lucide="play" class="w-6 h-6 fill-current"></i> <span id="start-text">RESUME</span>`;
+                lucide.createIcons();
+            }
+        }
+
+        function resetTimer() {
+            stopTimer();
+            clearInterval(timerInterval);
+            
+            // Reset state to initial configured values
+            state.timeLeft = settings.workTime;
+            state.currentSet = 1;
+            state.currentCycle = 1;
+            state.isWork = true;
+            state.isSetRest = false;
+            state.isRunning = false;
+            state.isReady = false; 
+
+            startBtn.innerHTML = `<i data-lucide="play" class="w-6 h-6 fill-current"></i> <span id="start-text">START</span>`;
+            lucide.createIcons();
+            
+            container.classList.remove('state-work', 'state-rest', 'state-set-rest');
+            statusLabel.innerText = "READY";
+            
+            updateDisplay();
+        }
+
+        function switchPhase() {
+            beep(900, 300, 'square'); 
+            
+            // Core logic transition
+            if (state.isWork) {
+                // Work -> Rest or Set Rest
+                state.isWork = false;
+                
+                if (state.currentCycle < settings.cyclesPerSet) {
+                    // Normal cycle rest
+                    state.timeLeft = settings.restTime;
+                    statusLabel.innerText = "REST";
+                    setTheme('rest');
+                } else if (state.currentSet < settings.totalSets && settings.setRestTime > 0) {
+                    // End of cycle in a set, transition to SET REST
+                    state.isSetRest = true;
+                    state.timeLeft = settings.setRestTime;
+                    statusLabel.innerText = "SET REST";
+                    setTheme('set-rest');
+                } else {
+                    // Last cycle of last set, or last set with no rest programmed, finish
+                    finishWorkout();
+                    return;
+                }
+            } else if (state.isSetRest) {
+                // Set Rest -> Next Set Work
+                state.isSetRest = false;
+                state.currentSet++;
+                state.currentCycle = 1;
+                state.isWork = true;
+                state.timeLeft = settings.workTime;
+                statusLabel.innerText = "WORK";
+                setTheme('work');
+            } else { 
+                // Cycle Rest -> Next Cycle Work or Next Set Work (if no set rest)
+                state.currentCycle++;
+                state.isWork = true;
+                
+                if (state.currentCycle > settings.cyclesPerSet) {
+                     // This means the user had 0s set rest, so we bypass it here.
+                    if (state.currentSet < settings.totalSets) {
+                        state.currentSet++;
+                        state.currentCycle = 1;
+                        state.timeLeft = settings.workTime;
+                        statusLabel.innerText = "WORK";
+                        setTheme('work');
+                    } else {
+                        finishWorkout();
+                        return;
+                    }
+                } else {
+                    // Standard transition to next cycle
+                    state.timeLeft = settings.workTime;
+                    statusLabel.innerText = "WORK";
+                    setTheme('work');
+                }
+            }
+            
+            updateDisplay();
+        }
+
+        function finishWorkout() {
+            stopTimer();
+            statusLabel.innerText = "DONE";
+            timeDisplay.innerText = "0";
+            state.isRunning = false;
+            
+            // Final celebratory beeps
+            setTimeout(() => beep(600, 100), 0);
+            setTimeout(() => beep(800, 100), 150);
+            setTimeout(() => beep(1200, 300), 300);
+            
+            startBtn.innerHTML = `<i data-lucide="rotate-ccw" class="w-6 h-6 fill-current"></i> <span id="start-text">RESTART</span>`;
+            lucide.createIcons();
+        }
+
+        function updateDisplay() {
+            // Ensure time is non-negative for display
+            const timeToDisplay = Math.max(0, state.timeLeft);
+            timeDisplay.innerText = timeToDisplay.toString().padStart(2, '0');
+            
+            // Display should reflect actual current progress, but total capacity.
+            cycleDisplay.innerText = state.currentCycle;
+            setDisplay.innerText = state.currentSet;
+        }
+
+        function setTheme(mode) {
+            container.classList.remove('state-work', 'state-rest', 'state-set-rest');
+            if (mode === 'work') {
+                container.classList.add('state-work');
+            } else if (mode === 'rest') {
+                container.classList.add('state-rest');
+            } else if (mode === 'set-rest') {
+                container.classList.add('state-set-rest');
+            }
+        }
+        
+        // Initial setup - automatically load settings and show the settings panel
+        window.onload = () => {
+             loadTimerSettings();
+             resetTimer();
+             showSettings();
+             lucide.createIcons();
+        }
+    </script>
+</body>
+</html>
